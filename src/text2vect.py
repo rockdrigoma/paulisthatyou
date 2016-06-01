@@ -419,14 +419,6 @@ print x_0
 #for column in A:
 
 
-
-
-
-
-
-
-
-
 #bigrams = ngrams(filtered_words, 2)
 
 # bigCount = Counter(bigrams)
