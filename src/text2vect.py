@@ -5,6 +5,7 @@ from nltk.util import ngrams
 from collections import Counter
 from oct2py import octave
 from oct2py.utils import Oct2PyError
+import numpy.matlib
 import numpy as np
 import codecs
 import nltk
@@ -12,7 +13,8 @@ import re
 octave.addpath('src/octave')
 
 datapath = 'data/'
-docs = {'he', 'ro', 'ph', 'cl', 'ga', 'ef', 'co2', 'co', 'jo1', 'pe2', 'ja', 'pe1'}
+docs = ['he', 'ro', 'ph', 'cl', 'ga', 'ef', 'co2', 'co', 'jo1', 'pe2', 'ja', 'pe1']
+ids = ['Paul', 'John', 'Peter', 'James', 'Peter']
 
 #unknown document
 f = datapath + 'he.txt'
@@ -42,6 +44,7 @@ def transformVec(strVec, numVec, vocabulary):
 			newVec.append(0)
 	return newVec
 
+#concatena el contenido de una tupla en un solo string
 def duple2Str(strVec):
 	newVec = []
 	a, b = zip(*strVec)
@@ -53,6 +56,18 @@ def duple2Str(strVec):
 #elimina todas las palabras repetidas en el vocabulario
 def createVocabulary(wordList):
 	return set(wordList)
+
+#funcion delta que deja entradas en cero para vector x_0 excepto la i-esima
+def delta(x_0, i):
+ 	x_i = np.matlib.zeros((len(x_0),1))
+ 	x_i[i] = x_0[i]
+ 	return x_i
+
+def residual(dx,A,y):
+	return np.linalg.norm(A*dx-y)
+
+print "Who wrote the Epistle to the Hebrews?"
+print "Is that you Paul?"
 
 #leemos cada documento
 file = codecs.open(f,'r','utf-8')
@@ -413,8 +428,28 @@ try:
 except Oct2PyError:
 	pass
 
-#imprimimos el vector disperso
-print x_0
+rows, cols = A_.shape
+dx = np.array(rows)
+r = 1000000000000000000000000000000000000
+index = None
+
+for i in range(cols):
+	dx = delta(x_0, i)
+	r_temp = residual(dx,A_,y_)
+	print "Residual for {0}: {1}".format(ids[i],r_temp)
+	if r_temp < r :
+		index = i
+		r = r_temp
+
+
+print "Lowest residual: {0}".format(r)
+print "It was you {0}".format(ids[index])
+
+
+
+
+
+
 
 #for column in A:
 
