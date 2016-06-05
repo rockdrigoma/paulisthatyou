@@ -91,22 +91,30 @@ for f in docs:
 	#leemos cada documento
 	exec("file = codecs.open(datapath+'{0}.txt','r','utf-8')".format(f))
 	content = file.read()
+	file.close()
 
 	#convertimos a minusculas
 	content = content.lower()
-	#quitamos numeros y signos de puntuacion
+	#quitamos numeros y signos de puntuacion para bag of words, bigramas y trigramas
 	toker = RegexpTokenizer(r'\W+|(,.;)+|[0-9]+', gaps=True)
 	nc = toker.tokenize(content)
+	#dejamos solo puntuacion para representacion de signos de puntuacion
+	tokerPunct = RegexpTokenizer(r'[^,.;!?]+', gaps=True)
+	ncPunct = tokerPunct.tokenize(content)
+
 	#quitamos palabras funcionales
 	if language=='english':
 		filtered_words = [w for w in nc if not w in stopwords.words(language)]
 	elif language=='greek':
 		filtered_words = [w for w in nc if not w in STOPS_LIST]
 
+	#creamos un diccionario y contamos los elementos mas comunes para bag of words, bigramas y trigramas
 	contador = Counter(filtered_words)
+	#creamos un diccionario y contamos los signos de puntuacion mas comunes
+	contadorPunct = Counter(ncPunct)
+
 	#obtenemos palabras mas comunes
 	exec("{0}_mc = contador.most_common(num_common)".format(f))
-	file.close()
 	exec("{0}_str = []".format(f))
 	exec("{0}_num = []".format(f))
 	exec("for w, n in {0}_mc:\n {0}_str.append(w)\n {0}_num.append(n)".format(f))
@@ -124,15 +132,23 @@ for f in docs:
 	exec("{0}_str_trig = []".format(f))
 	exec("{0}_num_trig = []".format(f))
 	exec("for w, n in {0}_trig:\n {0}_str_trig.append(w)\n {0}_num_trig.append(n)".format(f))
+	#obtenemos signos de puntuacion
+	exec("{0}_punct = contadorPunct.most_common(num_common)".format(f))
+	exec("{0}_str_punct = []".format(f))
+	exec("{0}_num_punct = []".format(f))
+	exec("for w, n in {0}_punct:\n {0}_str_punct.append(w)\n {0}_num_punct.append(n)".format(f))
 
 #unimos todos los documentos de palabras en una lista para la representacion de bag of words
 bowVec = he_str + ro_str + ph_str + cl_str + ga_str + ep_str + co2_str + co_str + jo1_str + jo2_str + jo3_str + pe2_str + ja_str + pe1_str + ju_str
 
-#unimos todos los documentos de palabras en una lista para la representacion de bigrams
+#unimos todos los documentos de palabras en una lista para la representacion de bigramas
 bigVec = he_str_big + ro_str_big + ph_str_big + cl_str_big + ga_str_big + ep_str_big + co2_str_big + co_str_big + jo1_str_big + jo2_str_big + jo3_str_big + pe2_str_big + ja_str_big + pe1_str_big + ju_str_big
 
-#unimos todos los documentos de palabras en una lista para la representacion de bigrams
+#unimos todos los documentos de palabras en una lista para la representacion de trigramas
 trigVec = he_str_trig + ro_str_trig + ph_str_trig + cl_str_trig + ga_str_trig + ep_str_trig + co2_str_trig + co_str_trig + jo1_str_trig + jo2_str_trig + jo3_str_trig + pe2_str_trig + ja_str_trig + pe1_str_trig + ju_str_trig
+
+#unimos todos los documentos de palabras en una lista para la representacion de puntuacion
+punctVec = he_str_punct + ro_str_punct + ph_str_punct + cl_str_punct + ga_str_punct + ep_str_punct + co2_str_punct + co_str_punct + jo1_str_punct + jo2_str_punct + jo3_str_punct + pe2_str_punct + ja_str_punct + pe1_str_punct + ju_str_punct
 
 #creamos el vocabulario para bag of words
 bowVoc = createVocabulary(bowVec)
@@ -143,6 +159,9 @@ bigVoc = createVocabulary(tempVoc)
 #creamos el vocabulario para trigrams
 tempVoc = tuple2StrTrig(trigVec) #transformamos la tupla de palabras concatenando ambas palabras en una
 trigVoc = createVocabulary(tempVoc)
+
+#creamos el vocabulario para puntuacion
+punctVoc = createVocabulary(punctVec)
 
 #convertimos cada documento en un vector basado en el vocabulario de bag of words
 for elem in docs:
@@ -160,15 +179,20 @@ for elem in docs:
 	exec("global d2s{0}; d2s{0} = tuple2StrTrig({0}_str_trig)".format(elem))
 	exec("global new_trig{0}; new_trig{0} = transformVec(d2s{0}, {0}_num_trig, trigVoc)".format(elem))
 
+#convertimos cada documento en un vector basado en el vocabulario de puntuacion
+for elem in docs:
+	exec("global new_punct{0}; new_punct{0} = transformVec({0}_str_punct, {0}_num_punct, punctVoc)".format(elem))
+
 #concatenamos las representaciones en una sola
 for elem in docs:
-	exec("global finalVec{0}; finalVec{0} = new{0}+new_big{0}+new_trig{0}".format(elem))
+	exec("global finalVec{0}; finalVec{0} = new{0}+new_big{0}+new_trig{0}+new_punct{0}".format(elem))
 
+#creamos np arrays para los vectores finales de cada documento para poder convertirlos en una matriz y operar con ellos
 for elem in docs:
 	exec("global np{0}; np{0} = np.array(finalVec{0})".format(elem))
 
 
-#calculamos el vector representativo de Pablo
+#calculamos el vector representativo de Pablo, aunque no lo utilizamos hasta que haya una forma de darle un peso adecuado
 paulSum = npro + npph + npcl + npga + npep + npco2 + npco
 paulAvg = paulSum
 
@@ -202,18 +226,3 @@ for i in range(cols):
 
 print("Lowest residual: {0}".format(r))
 print("It was you {0}".format(ids[authorIndex]))
-
-
-# trigrams = ngrams(filtered_words, 3)
-
-# trigCount = Counter(trigrams)
-
-# tM = trigCount.most_common(10)
-
-# print '\n' + 'TRIGRAMS' + '\n'
-
-# for i,j in tM:
-# 	text = ''
-# 	for x in i:
-# 		text += x + ' '
-# 	print '%s: %d' % (text, j)
