@@ -1,21 +1,28 @@
 from nltk import sent_tokenize, word_tokenize, pos_tag
+from nltk.stem.lancaster import LancasterStemmer
+from nltk.tokenize.punkt import PunktLanguageVars
 from cltk.stop.greek.stops import STOPS_LIST
 from nltk.tokenize import RegexpTokenizer
 from nltk.corpus import stopwords
-from nltk.util import ngrams
 from collections import Counter
+from nltk.util import ngrams
 from oct2py import octave
 from oct2py.utils import Oct2PyError
-import argparse
 import numpy.matlib
 import numpy as np
+import argparse
 import codecs
 import nltk
 import re
 octave.addpath('src/octave')
 
-docs = ['he', 'ro', 'ph', 'cl', 'ga', 'ep', 'co2', 'co', 'jo1','jo2', 'jo3', 'pe2', 'ja', 'pe1', 'ju']
-ids = ['Paul', 'Paul', 'Paul', 'Paul', 'Paul', 'Paul', 'Paul','John','John','John', 'Peter', 'James', 'Peter', 'Judas']
+#documentos y sus identificadores que se cargaran y procesaran como vectores
+docs = ['he', 'ro', 'ph', 'cl', 'ga', 'ep', 'co2', 'co', 'jo1','jo2', 'jo3', 'pe2', 'ja', 'pe1', 'ju', 'ma', 'mr', 'lu', 'jn', 'ac', 're']
+#documentos utilizados para crear la matriz con la que se resolvera el sistema
+docsMatrix = ['ro', 'ph', 'cl', 'ga', 'ep', 'co2', 'co', 'jo1','jo2', 'jo3', 'pe2', 'ja', 'pe1', 'ju', 'ma', 'mr', 'lu', 'jn', 'ac', 're']
+#identidad de cada autor en el mismo orden que en la lista docsMatrix
+ids = ['Paul', 'Paul', 'Paul', 'Paul', 'Paul', 'Paul', 'Paul','John','John','John', 'Peter', 'James', 'Peter', 'Judas', 'Matthew', 'Mark', 'Luke', 'John', 'Paul', 'John']
+#Numero de elementos mas comunes que se utilizaran para cada atributo: bag of words, bigramas, trigramas...
 num_common = 10
 
 #unknown document
@@ -38,6 +45,12 @@ num_common = 10
 # f12 'James'
 # f13 '1 Peter'
 # f14 'Judas'
+# f15 'Matthew'
+# f16 'Mark'
+# f17 'Luke'
+# f18 'John'
+# f19 'Paul'
+# f20 'John'
 
 #convierte el vector de un texto individual a un vector basado en el vocabulario general del problema
 def transformVec(strVec, numVec, vocabulary):
@@ -77,14 +90,15 @@ def delta(x_0, i):
  	x_i[i] = x_0[i]
  	return x_i
 
+#calculamos residual de la operacion || y - A * delta(x) ||_2
 def residual(dx,A,y):
-	return np.linalg.norm(A*dx-y)
+	return np.linalg.norm(y-A*dx)
 
 #Aqui comienza el programa
 
 print("Who wrote the Epistle to the Hebrews?")
 print("Is that you Paul?")
-language = input("Enter desired language: (english or greek) ") #raw_input para python2 
+language = 'english' #input("Enter desired language: (english or greek) ") #raw_input para python2 
 datapath = 'data/' + language + '/'
 
 for f in docs:
@@ -102,22 +116,24 @@ for f in docs:
 	tokerPunct = RegexpTokenizer(r'[^,.;!?]+', gaps=True)
 	ncPunct = tokerPunct.tokenize(content)
 
+	p = PunktLanguageVars()
+	ncGreek = p.word_tokenize(content)
+
 	#quitamos palabras funcionales
 	if language=='english':
 		filtered_words = [w for w in nc if not w in stopwords.words(language)]
 	elif language=='greek':
-		filtered_words = [w for w in nc if not w in STOPS_LIST]
+		filtered_words = [w for w in ncGreek if not w in STOPS_LIST]
 
 	#creamos un diccionario y contamos los elementos mas comunes para bag of words, bigramas y trigramas
-	contador = Counter(filtered_words)
-	#creamos un diccionario y contamos los signos de puntuacion mas comunes
-	contadorPunct = Counter(ncPunct)
+	contador = Counter(filtered_words)	
 
 	#obtenemos palabras mas comunes
 	exec("{0}_mc = contador.most_common(num_common)".format(f))
 	exec("{0}_str = []".format(f))
 	exec("{0}_num = []".format(f))
 	exec("for w, n in {0}_mc:\n {0}_str.append(w)\n {0}_num.append(n)".format(f))
+	
 	#obtenemos bigramas
 	big = ngrams(filtered_words, 2)
 	bigCount = Counter(big)
@@ -125,6 +141,7 @@ for f in docs:
 	exec("{0}_str_big = []".format(f))
 	exec("{0}_num_big = []".format(f))
 	exec("for w, n in {0}_big:\n {0}_str_big.append(w)\n {0}_num_big.append(n)".format(f))
+	
 	#obtenemos trigramas
 	trig = ngrams(filtered_words, 3)
 	trigCount = Counter(trig)
@@ -132,28 +149,57 @@ for f in docs:
 	exec("{0}_str_trig = []".format(f))
 	exec("{0}_num_trig = []".format(f))
 	exec("for w, n in {0}_trig:\n {0}_str_trig.append(w)\n {0}_num_trig.append(n)".format(f))
+	
 	#obtenemos signos de puntuacion
+	contadorPunct = Counter(ncPunct)
 	exec("{0}_punct = contadorPunct.most_common(num_common)".format(f))
 	exec("{0}_str_punct = []".format(f))
 	exec("{0}_num_punct = []".format(f))
 	exec("for w, n in {0}_punct:\n {0}_str_punct.append(w)\n {0}_num_punct.append(n)".format(f))
+	
+	#obtenemos prefijos con el detalle de que primero obtenemos prefijos y contamos los más comunes
+	st = LancasterStemmer()
+	exec("{0}_stemTemp = [st.stem(item) for item in filtered_words]".format(f))
+	exec("contadorStem = Counter({0}_stemTemp)".format(f))
+	exec("{0}_stem = contadorStem.most_common(num_common)".format(f))
+	exec("{0}_str_stem = []".format(f))
+	exec("{0}_num_stem = []".format(f))
+	exec("for w, n in {0}_stem:\n {0}_str_stem.append(w)\n {0}_num_stem.append(n)".format(f))
+
+
 
 #unimos todos los documentos de palabras en una lista para la representacion de bag of words
-bowVec = he_str + ro_str + ph_str + cl_str + ga_str + ep_str + co2_str + co_str + jo1_str + jo2_str + jo3_str + pe2_str + ja_str + pe1_str + ju_str
+bowVec = []
+for elem in docs:
+	exec("bowVec+={0}_str".format(elem))
 
 #unimos todos los documentos de palabras en una lista para la representacion de bigramas
-bigVec = he_str_big + ro_str_big + ph_str_big + cl_str_big + ga_str_big + ep_str_big + co2_str_big + co_str_big + jo1_str_big + jo2_str_big + jo3_str_big + pe2_str_big + ja_str_big + pe1_str_big + ju_str_big
+bigVec = []
+for elem in docs:
+	exec("bigVec+={0}_str_big".format(elem))
 
 #unimos todos los documentos de palabras en una lista para la representacion de trigramas
-trigVec = he_str_trig + ro_str_trig + ph_str_trig + cl_str_trig + ga_str_trig + ep_str_trig + co2_str_trig + co_str_trig + jo1_str_trig + jo2_str_trig + jo3_str_trig + pe2_str_trig + ja_str_trig + pe1_str_trig + ju_str_trig
+trigVec = []
+for elem in docs:
+	exec("trigVec+={0}_str_trig".format(elem))
 
 #unimos todos los documentos de palabras en una lista para la representacion de puntuacion
-punctVec = he_str_punct + ro_str_punct + ph_str_punct + cl_str_punct + ga_str_punct + ep_str_punct + co2_str_punct + co_str_punct + jo1_str_punct + jo2_str_punct + jo3_str_punct + pe2_str_punct + ja_str_punct + pe1_str_punct + ju_str_punct
+punctVec = []
+for elem in docs:
+	exec("punctVec+={0}_str_punct".format(elem))
+
+#unimos todos los documentos de palabras en una lista para la representacion de prefijos
+stemVec = []
+for elem in docs:
+	exec("stemVec+={0}_str_stem".format(elem))
+
 
 #creamos el vocabulario para bag of words
 bowVoc = createVocabulary(bowVec)
+
 #creamos el vocabulario para bigrams
-tempVoc = tuple2Str(bigVec) #transformamos la tupla de palabras concatenando ambas palabras en una
+#transformamos la tupla de palabras concatenando ambas palabras en una
+tempVoc = tuple2Str(bigVec)
 bigVoc = createVocabulary(tempVoc)
 
 #creamos el vocabulario para trigrams
@@ -162,6 +208,11 @@ trigVoc = createVocabulary(tempVoc)
 
 #creamos el vocabulario para puntuacion
 punctVoc = createVocabulary(punctVec)
+
+#creamos el vocabulario para prefijos
+stemVoc = createVocabulary(stemVec)
+
+print(stemVoc)
 
 #convertimos cada documento en un vector basado en el vocabulario de bag of words
 for elem in docs:
@@ -183,9 +234,13 @@ for elem in docs:
 for elem in docs:
 	exec("global new_punct{0}; new_punct{0} = transformVec({0}_str_punct, {0}_num_punct, punctVoc)".format(elem))
 
+#convertimos cada documento en un vector basado en el vocabulario de prefijos
+for elem in docs:
+	exec("global new_stem{0}; new_stem{0} = transformVec({0}_str_stem, {0}_num_stem, stemVoc)".format(elem))
+
 #concatenamos las representaciones en una sola
 for elem in docs:
-	exec("global finalVec{0}; finalVec{0} = new{0}+new_big{0}+new_trig{0}+new_punct{0}".format(elem))
+	exec("global finalVec{0}; finalVec{0} = new{0}+new_big{0}+new_trig{0}+new_punct{0}+new_stem{0}".format(elem))
 
 #creamos np arrays para los vectores finales de cada documento para poder convertirlos en una matriz y operar con ellos
 for elem in docs:
@@ -201,9 +256,15 @@ nu=0.0001
 tol=0.0001
 stopCrit=3
 
-A = np.matrix([npro, npph, npcl, npga, npep, npco2, npco, npjo1, npjo2, npjo3, nppe2, npja, nppe1, npju])
+#creamos la lista de los vectores para crear la matriz
+matrixElem = []
+for elem in docsMatrix:
+	exec("matrixElem.append(np{0})".format(elem))
+
+
+A = np.matrix(matrixElem)
 A_ = A.T
-y = np.matrix(nphe)
+y = np.matrix([nphe])
 y_ = y.T
 
 try:
