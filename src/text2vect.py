@@ -80,6 +80,9 @@ def tuple2StrTrig(strVec):
 		newVec.append(d)
 	return newVec
 
+def choosePOS(posList):
+	return [y for x, y in posList]
+
 #elimina todas las palabras repetidas en el vocabulario
 def createVocabulary(wordList):
 	return list(set(wordList))
@@ -157,7 +160,7 @@ for f in docs:
 	exec("{0}_num_punct = []".format(f))
 	exec("for w, n in {0}_punct:\n {0}_str_punct.append(w)\n {0}_num_punct.append(n)".format(f))
 	
-	#obtenemos prefijos con el detalle de que primero obtenemos prefijos y contamos los más comunes
+	#obtenemos prefijos con el detalle de que primero obtenemos prefijos y contamos los mas comunes
 	st = LancasterStemmer()
 	exec("{0}_stemTemp = [st.stem(item) for item in filtered_words]".format(f))
 	exec("contadorStem = Counter({0}_stemTemp)".format(f))
@@ -166,7 +169,14 @@ for f in docs:
 	exec("{0}_num_stem = []".format(f))
 	exec("for w, n in {0}_stem:\n {0}_str_stem.append(w)\n {0}_num_stem.append(n)".format(f))
 
-
+	#obtenemos etiquetas pos 
+	pos = pos_tag(nc)
+	pos_1 = choosePOS(pos)
+	contadorPos = Counter(pos_1)
+	exec("{0}_pos = contadorPos.most_common(num_common)".format(f))
+	exec("{0}_str_pos = []".format(f))
+	exec("{0}_num_pos = []".format(f))
+	exec("for w, n in {0}_pos:\n {0}_str_pos.append(w)\n {0}_num_pos.append(n)".format(f))
 
 #unimos todos los documentos de palabras en una lista para la representacion de bag of words
 bowVec = []
@@ -193,6 +203,11 @@ stemVec = []
 for elem in docs:
 	exec("stemVec+={0}_str_stem".format(elem))
 
+#unimos todos los documentos de palabras en una lista para la representacion pos
+posVec = []
+for elem in docs:
+	exec("posVec+={0}_str_pos".format(elem))
+
 
 #creamos el vocabulario para bag of words
 bowVoc = createVocabulary(bowVec)
@@ -212,7 +227,8 @@ punctVoc = createVocabulary(punctVec)
 #creamos el vocabulario para prefijos
 stemVoc = createVocabulary(stemVec)
 
-print(stemVoc)
+#creamos el vocabulario para pos
+posVoc = createVocabulary(posVec)
 
 #convertimos cada documento en un vector basado en el vocabulario de bag of words
 for elem in docs:
@@ -238,9 +254,15 @@ for elem in docs:
 for elem in docs:
 	exec("global new_stem{0}; new_stem{0} = transformVec({0}_str_stem, {0}_num_stem, stemVoc)".format(elem))
 
+#convertimos cada documento en un vector basado en el vocabulario de pos tags
+for elem in docs:
+	exec("global new_pos{0}; new_pos{0} = transformVec({0}_str_pos, {0}_num_pos, posVoc)".format(elem))
+
+
+
 #concatenamos las representaciones en una sola
 for elem in docs:
-	exec("global finalVec{0}; finalVec{0} = new{0}+new_big{0}+new_trig{0}+new_punct{0}+new_stem{0}".format(elem))
+	exec("global finalVec{0}; finalVec{0} = new{0}+new_big{0}+new_trig{0}+new_punct{0}+new_stem{0}+new_pos{0}".format(elem))
 
 #creamos np arrays para los vectores finales de cada documento para poder convertirlos en una matriz y operar con ellos
 for elem in docs:
@@ -271,6 +293,8 @@ try:
 	x_0, nIter = octave.SolveHomotopy(A_, y_, 'lambda', nu, 'tolerance', tol, 'stoppingcriterion', stopCrit)
 except Oct2PyError:
 	pass
+
+print(x_0)
 
 rows, cols = A_.shape
 dx = np.array(rows)
