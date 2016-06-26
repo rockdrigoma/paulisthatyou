@@ -33,7 +33,7 @@ counter = np.zeros(len(ids))
 #num_common = 20
 
 #iteraciones de todo el algoritmo
-iterations = 50
+iterations = 200
 
 #contador casos validos para SCI
 sciValidIter=0
@@ -126,7 +126,8 @@ def max_delta(x, cols):
 
 print("Who wrote the Epistle to the Hebrews?")
 print("Is that you Paul?")
-language = 'english' #input("Enter desired language: (english or greek) ") #raw_input para python2 
+#language = 'english'
+language = input("Enter desired language: (english or greek) ") #raw_input para python2 
 datapath = 'data/' + language + '/'
 
 for i in range(iterations):
@@ -277,7 +278,6 @@ for i in range(iterations):
     	exec("global new_pos{0}; new_pos{0} = transformVec({0}_str_pos, {0}_num_pos, posVoc)".format(elem))
 
 
-
     #concatenamos las representaciones en una sola
     for elem in docs:
     	full_rep = []
@@ -331,7 +331,7 @@ for i in range(iterations):
     rows, cols = A_.shape
     dx = np.array(rows)
     r = 1000000000
-    tau = 0.3
+    tau = 0.25 #25
     numIds = len(ids)
     residuales= []
 
@@ -350,17 +350,21 @@ for i in range(iterations):
     if sci(x_0, numIds, numIds, cols)>= tau:
         counter[authorId]+=1
         sciValidIter+=1
-        print(sci(x_0, numIds, numIds, cols))
+        #print(sci(x_0, numIds, numIds, cols))
+        
         #graficamos el vector disperso resultante
-        y_pos = np.arange(len(ids))
-        plt.bar(y_pos, x_0, align='center', alpha=0.5)
-        plt.xticks(y_pos, ids)
-        plt.ylabel('Contribution')
-        plt.title('Sparse Vector X')
-        plt.show()
-        #print("Lowest residual: {0}".format(r))
-        #print("It was you {0}".format(ids[authorIndex]))
+        #y_pos = np.arange(len(ids))
+        #plt.bar(y_pos, x_0, align='center', alpha=0.5)
+        #plt.xticks(y_pos, ids)
+        #plt.ylabel('Contribution')
+        #plt.title('Sparse Vector X')
+        #plt.show()
     
 
-print(ids[np.argmax(counter)])
-print(counter[np.argmax(counter)]/sciValidIter)*100
+print("Possible Author: {0}".format(ids[np.argmax(counter)]))
+print("Probability: {0}%".format((counter[np.argmax(counter)]/sciValidIter)*100))
+
+for i in range(len(counter)):
+    print("{0}: {1}%".format(ids[i],(counter[i]/sciValidIter)*100))
+
+
