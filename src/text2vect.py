@@ -20,10 +20,22 @@ octave.addpath('src/octave')
 
 #documentos y sus identificadores que se cargaran y procesaran como vectores
 docs = ['he', 'ro', 'ph', 'cl', 'ga', 'ep', 'co2', 'co', 'jo1','jo2', 'jo3', 'pe2', 'ja', 'pe1', 'ju', 'ma', 'mr', 'lu', 'jn', 'ac', 're']
+
 #documentos utilizados para crear la matriz con la que se resolvera el sistema
 docsMatrix = ['ro', 'ph', 'cl', 'ga', 'ep', 'co2', 'co', 'jo1','jo2', 'jo3', 'pe2', 'ja', 'pe1', 'ju', 'ma', 'mr', 'lu', 'jn', 'ac', 're']
+
 #identidad de cada autor en el mismo orden que en la lista docsMatrix
-ids = ['Paul', 'Paul', 'Paul', 'Paul', 'Paul', 'Paul', 'Paul','John','John','John', 'Peter', 'James', 'Peter', 'Judas', 'Matthew', 'Mark', 'Luke', 'John', 'Paul', 'John']
+ids = ['Paul','Paul','Paul','Paul','Paul','Paul','Paul','John','John','John','Peter', 'James', 'Peter', 'Judas', 'Matthew', 'Mark', 'Luke', 'John', 'Paul', 'John']
+
+#documento desconocido hebrews epistle
+y_unknown = ['he']
+
+#TEST
+#docs = ['f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
+#docsMatrix = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
+#ids = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
+
+
 #representaciones utilizadas
 reps = ['bow', 'big', 'trig', 'punct', 'stem', 'pos']
 #vector de ceros para iniciar conteo de autores que contribuyen mas en cada iteracion
@@ -33,7 +45,7 @@ counter = np.zeros(len(ids))
 #num_common = 20
 
 #iteraciones de todo el algoritmo
-iterations = 200
+iterations = 10 #100
 
 #contador casos validos para SCI
 sciValidIter=0
@@ -65,6 +77,7 @@ sciValidIter=0
 # f18 'John'
 # f19 'Paul'
 # f20 'John'
+
 
 #convierte el vector de un texto individual a un vector basado en el vocabulario general del problema
 def transformVec(strVec, numVec, vocabulary):
@@ -126,12 +139,13 @@ def max_delta(x, cols):
 
 print("Who wrote the Epistle to the Hebrews?")
 print("Is that you Paul?")
-#language = 'english'
+
 language = input("Enter desired language: (english or greek) ") #raw_input para python2 
 datapath = 'data/' + language + '/'
 
 for i in range(iterations):
     num_common=i+1
+    print("{0} of {1}".format(num_common,iterations))
     for f in docs:
     	#leemos cada documento
     	exec("file = codecs.open(datapath+'{0}.txt','r','utf-8')".format(f))
@@ -152,11 +166,11 @@ for i in range(iterations):
 
     	#quitamos palabras funcionales
     	if language=='english':
-    		filtered_words = [w for w in nc if not w in stopwords.words(language)]
+    		filtered_words = [w for w in nc if not w in stopwords.words('english')]
     	elif language=='greek':
     		filtered_words = [w for w in ncGreek if not w in STOPS_LIST]
 
-    	#creamos un diccionario y contamos los elementos mas comunes para bag of words, bigramas y trigramas
+        #creamos un diccionario y contamos los elementos mas comunes para bag of words, bigramas y trigramas
     	contador = Counter(filtered_words)	
 
     	#obtenemos palabras mas comunes
@@ -311,7 +325,7 @@ for i in range(iterations):
     A = np.matrix(matrixElem)
     A_ = A.T
     #asignamos a y el documento desconocido nphe que en este caso es el documento de Hebreos (he)
-    y = np.matrix([nphe])
+    exec("y = np.matrix([np{0}])".format(y_unknown[0]))
     y_ = y.T
 
     #resolvemos el sistema utilizando homotopia
@@ -331,34 +345,41 @@ for i in range(iterations):
     rows, cols = A_.shape
     dx = np.array(rows)
     r = 1000000000
-    tau = 0.25 #25
+    tau = 0.15 #0.25
     numIds = len(ids)
     residuales= []
 
     #obtenemos el residual mas pequeno de entre todos los vectores columna de A
-    for i in range(cols):
+    for j in range(cols):
         #calculamos delta de x_0 para cada coeficiente i
-        dx = delta(x_0, i)
+        dx = delta(x_0, j)
         #calculamos residual de d(x_0)
         residuales.append(residual(dx,A_,y_))
-        #print("Residual for {0}: {1}".format(ids[i],r_temp))
 
     #buscamos el residual mas pequeno
     authorId = np.argmin(residuales)
 
     #calculamos sci para ver si x recuperado es valido o no
-    if sci(x_0, numIds, numIds, cols)>= tau:
+    sci_val = sci(x_0, numIds, numIds, cols)
+    if sci_val>= tau:
         counter[authorId]+=1
         sciValidIter+=1
-        #print(sci(x_0, numIds, numIds, cols))
+        #print("SCI: {0} Iteration:".format(sci(x_0, numIds, numIds, cols))
         
         #graficamos el vector disperso resultante
-        #y_pos = np.arange(len(ids))
-        #plt.bar(y_pos, x_0, align='center', alpha=0.5)
-        #plt.xticks(y_pos, ids)
-        #plt.ylabel('Contribution')
-        #plt.title('Sparse Vector X')
-        #plt.show()
+        y_pos = np.arange(len(ids))
+        plt.bar(y_pos, x_0, align='center', alpha=0.5)
+        plt.xticks(y_pos, ids)
+        plt.ylabel('Contribution')
+        plt.title('Sparse Vector X - SCI: {0}'.format(sci_val))
+        plt.show()
+
+        y_pos = np.arange(len(ids))
+        plt.bar(y_pos, residuales, align='center', alpha=0.5)
+        plt.xticks(y_pos, ids)
+        plt.ylabel('Residuals')
+        plt.title('Residuals - SCI: {0}'.format(sci_val))
+        plt.show()
     
 
 print("Possible Author: {0}".format(ids[np.argmax(counter)]))
